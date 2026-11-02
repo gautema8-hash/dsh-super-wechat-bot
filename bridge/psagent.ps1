@@ -457,7 +457,13 @@ while ($true) {
         $d2 = if ($fast) { 80 } else { 150 }
         $d3 = if ($fast) { 150 } else { 240 }
         $prev = [SwbWin32]::GetForegroundWindow()
-        if (-not [SwbWin32]::ForceForeground($hwnd)) {
+        # 主人正在用电脑时系统会拒绝抢前台：退避重试，钻他停手的空档
+        $focused = $false
+        for ($fi = 0; $fi -lt 6; $fi++) {
+          if ([SwbWin32]::ForceForeground($hwnd)) { $focused = $true; break }
+          Start-Sleep -Milliseconds (120 + $fi * 160)
+        }
+        if (-not $focused) {
           Reply $id $true ([ordered]@{ sent = $false; error = "cannot-focus"; title = $title })
           continue
         }
@@ -493,6 +499,14 @@ while ($true) {
         }
         # last-moment gate: still WeChat? still the right chat? still focused?
         $fgNow = [SwbWin32]::GetForegroundWindow()
+        if ($fgNow -ne $hwnd) {
+          for ($rj = 0; $rj -lt 4; $rj++) {
+            [void][SwbWin32]::ForceForeground($hwnd)
+            Start-Sleep -Milliseconds 110
+            if ([SwbWin32]::GetForegroundWindow() -eq $hwnd) { break }
+          }
+          $fgNow = [SwbWin32]::GetForegroundWindow()
+        }
         if ($fgNow -ne $hwnd) {
           [System.Windows.Forms.SendKeys]::SendWait("^a")
           [System.Windows.Forms.SendKeys]::SendWait("{DEL}")
