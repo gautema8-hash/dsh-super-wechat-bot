@@ -47,6 +47,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <button id="startDraft" class="ghost">以 draft 启动</button>
 <button id="startAuto" class="ghost">以 auto 启动</button>
 <button id="stop" class="danger">停止</button>
+<button id="switch" class="ghost">切到目标会话</button>
 <span id="msg"></span>
 </div></div>
 
@@ -119,6 +120,7 @@ $('#save').onclick = async () => {
 };
 $('#startDraft').onclick = async () => { const r = await api('/api/start', { mode: 'draft' }); say(r.ok ? '已启动(draft)' : r.error, !r.ok); load(); };
 $('#startAuto').onclick = async () => { const r = await api('/api/start', { mode: 'auto' }); say(r.ok ? '已启动(auto)' : r.error, !r.ok); load(); };
+$('#switch').onclick = async () => { const r = await api('/api/switch', {}); say(r.ok ? ('已切到 ' + r.contact) : (r.error || '切换失败'), !r.ok); load(); };
 $('#stop').onclick = async () => { const r = await api('/api/stop', {}); say(r.ok ? '已停止' : r.error, !r.ok); load(); };
 $('#saveRoles').onclick = async () => {
   let arr;
@@ -163,6 +165,7 @@ export function startPanel(opts) {
       if (url.pathname === '/api/state' && req.method === 'GET') return send(res, 200, opts.getState());
       if (url.pathname === '/api/preflight') return send(res, 200, await opts.preflight());
       if (url.pathname === '/api/launch') return send(res, 200, await opts.launch());
+      if (url.pathname === '/api/switch') return send(res, 200, await opts.switchTo());
       if (req.method !== 'POST') return send(res, 405, { ok: false, error: 'method not allowed' });
       const body = await readBody(req);
       if (url.pathname === '/api/config') return send(res, 200, await opts.setConfig(body));

@@ -423,6 +423,39 @@ while ($true) {
         } finally { $cap.bmp.Dispose() }
         Reply $id $true ([ordered]@{ running = $true; hwnd = [int]$hwnd; visible = [SwbWin32]::IsWindowVisible($hwnd); loggedIn = ($title.Length -gt 0 -or $txt.Length -gt 10); title = $title })
       }
+      "open" {
+        $t = Find-Target
+        $hwnd = $t.hwnd
+        $want = [string]$req.contact
+        if (-not $want) { Reply $id $true ([ordered]@{ switched = $false; error = "contact-required" }); continue }
+        $prev = [SwbWin32]::GetForegroundWindow()
+        $focused = $false
+        for ($fi = 0; $fi -lt 6; $fi++) {
+          if ([SwbWin32]::ForceForeground($hwnd)) { $focused = $true; break }
+          Start-Sleep -Milliseconds (120 + $fi * 160)
+        }
+        if (-not $focused) { Reply $id $true ([ordered]@{ switched = $false; error = "cannot-focus" }); continue }
+        $cap = Capture-Window $t
+        $sx = $cap.x + [int]($cap.w * $script:Cfg.searchX)
+        $sy = $cap.y + [int]($cap.h * $script:Cfg.searchY)
+        $cap.bmp.Dispose()
+        [SwbWin32]::Click($sx, $sy)
+        Start-Sleep -Milliseconds 260
+        Set-Clipboard -Value $want
+        Start-Sleep -Milliseconds 70
+        [System.Windows.Forms.SendKeys]::SendWait("^a")
+        Start-Sleep -Milliseconds 40
+        [System.Windows.Forms.SendKeys]::SendWait("^v")
+        Start-Sleep -Milliseconds 750
+        [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+        Start-Sleep -Milliseconds 900
+        $cap2 = Capture-Window $t
+        $title = Read-Title $cap2
+        $cap2.bmp.Dispose()
+        if ($prev -ne [IntPtr]::Zero) { [void][SwbWin32]::SetForegroundWindow($prev) }
+        $ok = (($title -replace "\s+", "") -eq ($want -replace "\s+", ""))
+        Reply $id $true ([ordered]@{ switched = $ok; title = $title; want = $want })
+      }
       "input" {
         $t = Find-Target
         Reply $id $true ([ordered]@{ text = (Read-InputArea $t) })

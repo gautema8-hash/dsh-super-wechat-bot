@@ -804,6 +804,26 @@ const handlers = {
       steps,
     };
   },
+  async switch(args = {}) {
+    const want = String(args.contact || state.contact || cfg.contact || '').trim();
+    if (!want) throw new Error('先填目标会话名（昵称或备注，和微信标题一致）');
+    if (!agent?.alive) {
+      agent = new Agent(cfg.processName || 'Weixin');
+      await agent.start();
+      await agent.request('config', { cfg: geometry(cfg) });
+    }
+    const r = await agent.request('open', { contact: want }, 45000);
+    if (!r.switched) {
+      return { ok: false, error: r.error || ('切不过去：当前标题「' + (r.title || '未识别') + '」'), title: r.title || '', want };
+    }
+    cfg = deepMerge(cfg, { contact: want });
+    state.contact = want;
+    state.initialized = false;
+    state.anchor = '';
+    state.lastHandledKey = '';
+    OUT({ type: 'event', event: 'switched', contact: want, title: r.title });
+    return { ok: true, contact: want, title: r.title };
+  },
   async launch() {
     try {
       if (!agent?.alive) { agent = new Agent(cfg.processName || 'Weixin'); await agent.start(); }
