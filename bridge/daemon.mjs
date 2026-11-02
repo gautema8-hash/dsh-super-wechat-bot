@@ -33,6 +33,11 @@ const DEFAULT_CONFIG = {
   processName: 'Weixin',
   pollMs: 900,
   coalesceMs: 1600,
+  // 快档：优先速度而不是“看起来像人”。opens 后轮询更密、合并更短、几乎不延迟。
+  fastMode: false,
+  pollMsFast: 280,
+  coalesceMsFast: 320,
+  fastDelayMs: 120,
   maxRepliesPerMinute: 6,
   maxReplyChars: 40,
   stopAfterEscalations: 2,
@@ -196,7 +201,7 @@ const state = {
   escalations: 0,
   lastError: null,
   lastPoll: null,
-  stats: { polls: 0, changed: 0, replies: 0, drafts: 0, escalations: 0, skips: 0, errors: 0, avgPollMs: 0 },
+  stats: { polls: 0, changed: 0, replies: 0, drafts: 0, escalations: 0, skips: 0, errors: 0, avgPollMs: 0, lastReplyMs: 0, avgReplyMs: 0 },
   recentSends: [],
   pausedReason: null,
   lastTitle: '',
@@ -247,7 +252,7 @@ async function sendText(text, opts = {}) {
   // 去重闸：同一句话 90 秒内绝不重复发（防重试/重入造成刷屏）
   const dup = state.recentSends.find((t) => t.text === raw && now - t.ts < 90000);
   if (dup) throw new Error('duplicate suppressed: 这句话 90 秒内已经发过');
-  const res = await withSendLock(() => agent.request('send', { text: raw, clear: opts.clear === true, expect: state.contact }, 30000));
+  const res = await withSendLock(() => agent.request('send', { text: raw, clear: opts.clear === true, expect: state.contact, fast: !!cfg.fastMode }, 30000));
   if (res?.error || res?.sent === false) {
     state.stats.errors += 1;
     const reason = res?.error === 'title-mismatch'
@@ -264,7 +269,13 @@ async function sendText(text, opts = {}) {
   state.recentSends.push({ ts: now, text: raw });
   state.stats.replies += 1;
   audit({ kind: 'sent', text: raw, mode: state.mode, contact: state.contact }).catch(() => {});
-  OUT({ type: 'event', event: 'sent', text: raw, ts: now, pasted: !!res?.pasted, remaining: res?.remaining ?? '' });
+  if (state.replyStartedAt) {
+    const ms = Date.now() - state.replyStartedAt;
+    state.stats.lastReplyMs = ms;
+    state.stats.avgReplyMs = state.stats.replies <= 1 ? ms : Math.round((state.stats.avgReplyMs * (state.stats.replies - 1) + ms) / state.stats.replies);
+    state.replyStartedAt = 0;
+  }
+  OUT({ type: 'event', event: 'sent', text: raw, ts: now, pasted: !!res?.pasted, remaining: res?.remaining ?? '', latencyMs: state.stats.lastReplyMs });
   return res || { sent: true };
 }
 
@@ -405,16 +416,17 @@ async function decideAndAct(pending) {
 }
 
 async function maybeSend(text, { urgent = false, draftId = null } = {}) {
-  const delay = delayFor(urgent);
+  const delay = cfg.fastMode ? Math.max(0, Number(cfg.fastDelayMs ?? 120)) : delayFor(urgent);
   OUT({ type: 'event', event: 'thinking', text, delayMs: delay, draftId });
   await sleep(delay);
-  const check = await pollOnce();
+  const fresh = state.lastPoll && Date.now() - state.lastPoll.ts < 1500;
+  const check = cfg.fastMode && fresh ? { title: state.lastTitle } : await pollOnce();
   if (!titleMatches(check.title, state.contact)) {
     state.lastError = 'title mismatch before send: ' + check.title;
     OUT({ type: 'event', event: 'blocked', reason: 'title-mismatch', title: check.title });
     return false;
   }
-  const busy = await inputBusy();
+  const busy = cfg.fastMode ? null : await inputBusy();
   if (busy) {
     OUT({ type: 'event', event: 'blocked', reason: 'input-busy', detail: busy });
     state.lastError = '输入框里有别人正在打的字，放弃本次发送';
@@ -465,7 +477,7 @@ async function inputBusy() {
 async function confirmSent(text) {
   const norm = String(text).replace(/\s+/g, '');
   const head = norm.slice(0, 6);
-  const waits = [350, 800, 1500];
+  const waits = cfg.fastMode ? [150, 400, 800] : [350, 800, 1500];
   for (const ms of waits) {
     await sleep(ms);
     try {
@@ -499,10 +511,12 @@ async function tick() {
 
   const fresh = sliceNewIncoming(msgs, state.anchor);
   if (!fresh.length) return;
+  // 从“看到对方这句”开始计时，到真正发出去为止
+  state.replyStartedAt = Date.now();
 
   // 连发合并：静默一小段时间，把对方这一串话一起读进来
   const anchorBefore = state.anchor;
-  await sleep(cfg.coalesceMs ?? 1600);
+  await sleep(cfg.fastMode ? (cfg.coalesceMsFast ?? 320) : (cfg.coalesceMs ?? 1600));
   const poll2 = await pollOnce();
   const msgs2 = parseMessages(poll2, poll2.crop);
   if (msgs2.length) state.history = msgs2.slice(-30);
@@ -534,7 +548,7 @@ async function loop() {
         OUT({ type: 'event', event: 'error', msg: state.lastError });
         await sleep(1500);
       }
-      await sleep(Math.max(200, cfg.pollMs ?? 900));
+      await sleep(Math.max(120, cfg.fastMode ? (cfg.pollMsFast ?? 280) : (cfg.pollMs ?? 900)));
     }
   } finally {
     loopRunning = false;
@@ -685,6 +699,7 @@ const handlers = {
     if (!texts.length || !texts[0]) throw new Error('texts required');
     const pending = texts.map((t, i) => ({ dir: 'in', text: String(t), key: 'sim:' + i + ':' + t, i }));
     state.history = pending.slice();
+    state.replyStartedAt = Date.now();
     await decideAndAct(pending);
     return { drafts: state.drafts.slice(0, 3), mode: state.mode, lastError: state.lastError };
   },
@@ -758,8 +773,11 @@ process.stdin.on('data', (chunk) => {
     try { req = JSON.parse(line); } catch { continue; }
     const fn = handlers[req.cmd];
     if (!fn) { reply(req.id, false, { error: 'unknown cmd: ' + req.cmd }); continue; }
-    Promise.resolve()
-      .then(() => fn(req))
+    const guarded = Promise.race([
+      Promise.resolve().then(() => fn(req)),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('handler timeout: ' + req.cmd)), 25000)),
+    ]);
+    guarded
       .then((res) => reply(req.id, true, res || {}))
       .catch((err) => reply(req.id, false, { error: String(err?.message || err) }));
   }

@@ -395,16 +395,20 @@ while ($true) {
             continue
           }
         }
+        $fast = [bool]$req.fast
+        $d1 = if ($fast) { 110 } else { 220 }
+        $d2 = if ($fast) { 80 } else { 150 }
+        $d3 = if ($fast) { 150 } else { 240 }
         $prev = [SwbWin32]::GetForegroundWindow()
         if (-not [SwbWin32]::ForceForeground($hwnd)) {
           Reply $id $true ([ordered]@{ sent = $false; error = "cannot-focus"; title = $title })
           continue
         }
-        Start-Sleep -Milliseconds 220
+        Start-Sleep -Milliseconds $d1
         $ix = $cap.x + [int]($cap.w * $script:Cfg.inputX)
         $iy = $cap.y + [int]($cap.h * $script:Cfg.inputY)
         [SwbWin32]::Click($ix, $iy)
-        Start-Sleep -Milliseconds 150
+        Start-Sleep -Milliseconds $d2
         if ($req.clear) {
           [System.Windows.Forms.SendKeys]::SendWait("^a")
           Start-Sleep -Milliseconds 40
@@ -414,7 +418,7 @@ while ($true) {
         Set-Clipboard -Value ([string]$req.text)
         Start-Sleep -Milliseconds 70
         [System.Windows.Forms.SendKeys]::SendWait("^v")
-        Start-Sleep -Milliseconds 240
+        Start-Sleep -Milliseconds $d3
         $pasted = Read-InputArea $t
         if (-not (Test-RealInput $pasted)) {
           [SwbWin32]::Click($ix, $iy)
@@ -443,8 +447,13 @@ while ($true) {
         $remaining = $pasted
         if (-not $req.noenter) {
           [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-          Start-Sleep -Milliseconds 260
-          $remaining = Read-InputArea $t
+          if ($fast) {
+            Start-Sleep -Milliseconds 90
+            $remaining = ""
+          } else {
+            Start-Sleep -Milliseconds 260
+            $remaining = Read-InputArea $t
+          }
           $sent = $true
         }
         if ($prev -ne [IntPtr]::Zero) { [void][SwbWin32]::SetForegroundWindow($prev) }
