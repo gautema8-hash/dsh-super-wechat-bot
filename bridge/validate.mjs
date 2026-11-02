@@ -127,6 +127,43 @@ export function validatePatch(input) {
       out.canned = list;
     }
   }
+  // --- 面板新增字段：节奏/限额/进程/模型/角色分隔 ---
+  for (const key of ['fastMode', 'autoStart']) {
+    if (key in input) out[key] = !!input[key];
+  }
+  for (const [key, [lo, hi]] of Object.entries({
+    pollMsFast: [50, 5000],
+    coalesceMsFast: [0, 8000],
+    fastDelayMs: [0, 5000],
+    draftRetention: [1, 200],
+  })) {
+    if (!(key in input)) continue;
+    const n = Number(input[key]);
+    if (!Number.isFinite(n)) { errors.push(key + ' 必须是数字'); continue; }
+    const clamped = clamp(Math.round(n), [lo, hi]);
+    if (clamped !== Math.round(n)) warnings.push(key + ' 超出范围，已收敛到 ' + clamped);
+    out[key] = clamped;
+  }
+  if ('skipAckProbability' in input) {
+    const n = Number(input.skipAckProbability);
+    if (!Number.isFinite(n) || n < 0 || n > 1) errors.push('skipAckProbability 必须在 0~1 之间');
+    else out.skipAckProbability = n;
+  }
+  if ('processName' in input) {
+    const s = String(input.processName || '').trim();
+    if (!/^[A-Za-z0-9_.-]{1,40}$/.test(s)) errors.push('processName 只能是进程名（如 Weixin）');
+    else out.processName = s;
+  }
+  if ('baseUrl' in input) {
+    const s = String(input.baseUrl || '').trim().replace(/\/+$/, '');
+    if (!/^https?:\/\/[^\s]+$/.test(s)) errors.push('baseUrl 必须是 http(s) 地址');
+    else out.baseUrl = s;
+  }
+  if ('roleDefer' in input) {
+    checkRegex(input.roleDefer, 'roleDefer', errors);
+    if (typeof input.roleDefer === 'string') out.roleDefer = input.roleDefer;
+  }
+
   if ('delay' in input && input.delay && typeof input.delay === 'object') {
     const d = {};
     for (const [k, v] of Object.entries(input.delay)) {

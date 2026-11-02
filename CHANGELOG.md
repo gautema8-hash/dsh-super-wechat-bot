@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1
+
+- 设置页重做：DSH 设置 → 微信代聊 里可配置全部参数（会话/角色/进程、节奏与延迟、
+  限额与安全、话术、识别正则、预置短语、模型与密钥、自定义角色），保存前先过校验
+- 面板配置接口新增 fastMode / autoStart / processName / baseUrl / skipAckProbability /
+  draftRetention / pollMsFast / coalesceMsFast / fastDelayMs / roleDefer 字段
+- 顶部实时显示微信当前会话，和目标的会话名不一致时直接标红
+
 ## 0.1.0
 
 首个可安装版本。
