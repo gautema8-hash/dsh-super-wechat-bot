@@ -601,11 +601,20 @@ const handlers = {
     await agent.start();
     await agent.request('config', { cfg: geometry(cfg) });
     // 启动即校验会话标题：对不上绝不开始，避免发错人。
-    const probe = await pollOnce();
-    if (!titleMatches(probe.title, cfg.contact)) {
+    // 窗口被遮挡时首帧可能抓空，重试几次再下结论。
+    let probe = null;
+    let lastTitle = '';
+    for (let attempt = 0; attempt < 3; attempt++) {
+      probe = await pollOnce();
+      lastTitle = probe.title || '';
+      if (titleMatches(lastTitle, cfg.contact)) break;
+      OUT({ type: 'event', event: 'warn', msg: '标题未识别，重试 ' + (attempt + 1) + '/3', title: lastTitle });
+      await sleep(700);
+    }
+    if (!titleMatches(lastTitle, cfg.contact)) {
       agent.stop();
       agent = null;
-      throw new Error('当前微信会话是 "' + (probe.title || '(未识别)') + '"，与目标 "' + cfg.contact + '" 不一致。请先在微信里打开目标会话再启动。');
+      throw new Error('当前微信会话是 "' + (lastTitle || '(未识别)') + '"，与目标 "' + cfg.contact + '" 不一致。请先在微信里打开目标会话再启动。');
     }
     state.mode = cfg.mode === 'off' ? 'draft' : cfg.mode;
     state.contact = cfg.contact;

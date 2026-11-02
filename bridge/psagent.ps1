@@ -405,8 +405,17 @@ while ($true) {
         $rect = Get-Rect $hwnd
         $cap = @{ bmp = (Print-Window $hwnd $rect.w $rect.h); hwnd = $hwnd; x = $rect.x; y = $rect.y; w = $rect.w; h = $rect.h }
         $geo = [ordered]@{ x = $cap.x; y = $cap.y; w = $cap.w; h = $cap.h }
-        $title = Read-Title $cap
         $cap.bmp.Dispose()
+        $title = Read-Title $cap
+        if (-not $title) {
+          # 被遮挡时首帧可能是空的：先借前台再重抓，否则标题闸会误判
+          [void][SwbWin32]::ForceForeground($hwnd)
+          Start-Sleep -Milliseconds 180
+          $cap = Capture-Window $t
+          $geo = [ordered]@{ x = $cap.x; y = $cap.y; w = $cap.w; h = $cap.h }
+          $title = Read-Title $cap
+          $cap.bmp.Dispose()
+        }
         if ($req.expect) {
           $normTitle = ($title -replace "\s+", "").ToLower()
           $normExpect = ([string]$req.expect -replace "\s+", "").ToLower()
