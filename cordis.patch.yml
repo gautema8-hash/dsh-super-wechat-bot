@@ -1,0 +1,5 @@
+# super-wechat-bot bundle patch layer.
+# 声明本插件自己的 loader 条目，由 dsh 在 profile 树里插入。
+- insert:
+    - id: super-wechat-bot
+      name: 'super-wechat-bot'
