@@ -35,7 +35,7 @@ const DEFAULT_CONFIG = {
   coalesceMs: 1600,
   // 快档：优先速度而不是“看起来像人”。opens 后轮询更密、合并更短、几乎不延迟。
   fastMode: false,
-  pollMsFast: 280,
+  pollMsFast: 220,
   coalesceMsFast: 320,
   fastDelayMs: 120,
   maxRepliesPerMinute: 6,
@@ -516,7 +516,18 @@ async function tick() {
 
   // 连发合并：静默一小段时间，把对方这一串话一起读进来
   const anchorBefore = state.anchor;
-  await sleep(cfg.fastMode ? (cfg.coalesceMsFast ?? 320) : (cfg.coalesceMs ?? 1600));
+  if (cfg.fastMode) {
+    // 快档不做第二次整轮抓取：省掉一次 ~150ms 的 poll 和 OCR
+    const listFast = fresh;
+    const lastKeyFast = listFast[listFast.length - 1]?.key ?? '';
+    state.anchor = lastKeyFast || fresh[fresh.length - 1].key;
+    if (lastKeyFast && lastKeyFast === state.lastHandledKey) return;
+    state.lastHandledKey = lastKeyFast;
+    state.replyStartedAt = state.replyStartedAt || Date.now();
+    await decideAndAct(listFast);
+    return;
+  }
+  await sleep(cfg.coalesceMs ?? 1600);
   const poll2 = await pollOnce();
   const msgs2 = parseMessages(poll2, poll2.crop);
   if (msgs2.length) state.history = msgs2.slice(-30);

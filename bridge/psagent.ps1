@@ -306,6 +306,8 @@ function Reply($id, $ok, $payload) {
 
 $script:LastHash = ""
 $script:LastLines = @()
+$script:LastTitle = ""
+$script:LastTitleMs = 0
 
 while ($true) {
   $line = [Console]::In.ReadLine()
@@ -344,7 +346,15 @@ while ($true) {
             $crop.Save($ms, [System.Drawing.Imaging.ImageFormat]::Bmp)
             $md5 = [BitConverter]::ToString([System.Security.Cryptography.MD5]::Create().ComputeHash($ms.ToArray())).Replace("-", "")
             $ms.Dispose()
-            $title = Read-Title $cap
+            $nowMs = [Environment]::TickCount64
+            $needTitle = $changed -or (($nowMs - $script:LastTitleMs) -gt 2000)
+            if ($needTitle) {
+              $title = Read-Title $cap
+              $script:LastTitle = $title
+              $script:LastTitleMs = $nowMs
+            } else {
+              $title = $script:LastTitle
+            }
             $changed = ($md5 -ne $script:LastHash)
             $ocrMs = 0
             $lines = $script:LastLines
@@ -383,7 +393,8 @@ while ($true) {
       "send" {
         $t = Find-Target
         $hwnd = $t.hwnd
-        $cap = Capture-Window $t
+        $rect = Get-Rect $hwnd
+        $cap = @{ bmp = (Print-Window $hwnd $rect.w $rect.h); hwnd = $hwnd; x = $rect.x; y = $rect.y; w = $rect.w; h = $rect.h }
         $geo = [ordered]@{ x = $cap.x; y = $cap.y; w = $cap.w; h = $cap.h }
         $title = Read-Title $cap
         $cap.bmp.Dispose()
