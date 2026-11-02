@@ -898,6 +898,7 @@ async function boot() {
     getState: panelState,
     preflight: () => handlers.preflight(),
     launch: () => handlers.launch(),
+    switchTo: () => handlers.switch(),
     setConfig: (patch) => handlers.config({ set: patch }),
     start: (args) => handlers.start(args),
     stop: () => handlers.stop(),
