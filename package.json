@@ -1,8 +1,7 @@
 {
   "name": "dsh-super-wechat-bot",
   "version": "0.1.0",
-  "private": true,
-  "description": "DSH plugin: 微信代聊机器人 — 独立桥进程，OCR 侧读，拟人节奏自动回复",
+  "description": "微信代聊机器人 · DSH 插件：OCR 读屏 + 拟人节奏，用你本人的口吻替你回微信",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -14,20 +13,45 @@
   "files": [
     "lib",
     "bridge",
-    "test",
     "cordis.patch.yml",
     "README.md",
     "LICENSE"
   ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis-plugin",
+    "wechat",
+    "微信",
+    "ocr",
+    "autoreply"
+  ],
+  "license": "MIT",
+  "author": "gautema8-hash",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gautema8-hash/dsh-super-wechat-bot.git"
+  },
+  "homepage": "https://github.com/gautema8-hash/dsh-super-wechat-bot#readme",
+  "bugs": {
+    "url": "https://github.com/gautema8-hash/dsh-super-wechat-bot/issues"
+  },
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.2.1-rc.5 <0.3.0-0"
+  },
+  "os": [
+    "win32"
+  ],
+  "scripts": {
+    "test": "node test/offline.test.mjs && node test/panel.test.mjs",
+    "test:delivery": "node test/delivery.test.mjs"
+  },
   "dsh": {
     "runtime": "host",
     "bundle": {
       "patch": "./cordis.patch.yml"
-    },
-    "compatibility": {
-      "dshReleases": {
-        "0.2.1-rc.5": "compatible"
-      }
     },
     "client": {
       "platform": "web",

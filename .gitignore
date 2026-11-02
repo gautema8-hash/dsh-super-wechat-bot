@@ -3,3 +3,5 @@ audit/
 *.log
 .DS_Store
 Thumbs.db
+*.tgz
+dist/

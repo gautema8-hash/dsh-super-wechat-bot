@@ -1,5 +1,9 @@
 # dsh-super-wechat-bot
 
+[![GitHub release](https://img.shields.io/github/v/release/gautema8-hash/dsh-super-wechat-bot)](https://github.com/gautema8-hash/dsh-super-wechat-bot/releases)
+[![license](https://img.shields.io/github/license/gautema8-hash/dsh-super-wechat-bot)](LICENSE)
+[![CI](https://github.com/gautema8-hash/dsh-super-wechat-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/gautema8-hash/dsh-super-wechat-bot/actions/workflows/ci.yml)
+
 微信代聊机器人 · DSH 插件。用主人本人的口吻替你回微信，**检测→决策→发送整条回路跑在独立进程里**，不占 DSH 的 agent 轮次。
 
 - 延迟：预置短语 **1–1.5s** 直达，模型生成 **2.5–4s**（实测 flash 首包 1.5s 左右）
@@ -8,10 +12,36 @@
 - 拟人：延迟对数正态抖动、连发合并、85% 不回收尾语、被催时切 1–2s 快档
 - 安全：会话标题校验、身份分级 T0–T3、升级即停手、每分钟限流、全量审计
 
+## 环境要求
+
+- Windows 10 / 11
+- 微信桌面版 4.x（进程名 `Weixin`）
+- DSH `>= 0.2.1-rc.5 < 0.3.0-0`、Node.js >= 20
+
 ## 安装
 
-已经装进 `C:\Users\xuyan\.dsh\profiles\web\node_modules\dsh-super-wechat-bot`，
-并在 profile 的 `cordis.patch.yml` 里加了 loader 条目：
+在 DSH 里直接装发行包（推荐）：
+
+```sh
+dsh plugin --profile web add https://github.com/gautema8-hash/dsh-super-wechat-bot/releases/latest/download/dsh-super-wechat-bot.tgz
+```
+
+或者走 GitHub 源码：
+
+```sh
+dsh plugin --profile web add github:gautema8-hash/dsh-super-wechat-bot
+```
+
+装完重启 DSH，`wechat_*` 工具即出现在会话里。插件市场收录后也可以直接在**设置 → 插件 → 市场**里搜索安装。
+
+### 从源码开发
+
+```powershell
+# 装到 profile 并挂上 loader 条目
+Copy-Item -Recurse -Force .\* "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-super-wechat-bot\"
+```
+
+然后在 `$env:USERPROFILE\.dsh\profiles\web\cordis.patch.yml` 末尾加：
 
 ```yaml
 - insert:
@@ -19,11 +49,8 @@
       name: 'dsh-super-wechat-bot'
 ```
 
-改完代码要同步过去（开发目录 → profile）：
-
-```powershell
-Copy-Item -Recurse -Force .\dsh-super-wechat-bot\* "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-super-wechat-bot\"
-```
+改代码后重复一次拷贝命令即可（profile 的 `patchReload: live` 会热加载）。
+跑测试：`npm test`。
 
 ## 用法
 
