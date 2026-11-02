@@ -15,7 +15,7 @@ export const DEFAULTS = {
     t1: '(咋这么|怎么这么|今天怎么|不对劲|怪怪的|你没事吧)',
     t2: '(转账|借钱|借我|借点|还钱|打钱|转我|收款|红包|多少钱|合同|签个|签约|定金|付款|报销|工资|分期|首付|密码|验证码|身份证|地址|住哪|分手|喜欢|表白|生病|医院|明天.{0,6}(来|到|见)|几点.{0,4}见|等你.{0,4}吃饭|出来吃|一起吃饭|请你吃|见面|来我家|去你那)',
   },
-  ackOnly: '^(嗯+|哦+|哦哦|好吧|好的吧|行吧|收到了|知道了|[\\u{1F300}-\\u{1FAFF}\\u2600-\\u27BF]+)$',
+  ackOnly: '^(嗯+|哦+|哦哦|好吧|好的吧|行吧|收到了|知道了|[\\uD83C-\\uDBFF\\uDC00-\\uDFFF\\u2600-\\u27BF]+)$',
   escalateLine: '一会儿我亲自跟你说',
   deferLine: '这个我晚点跟你细说',
   busyLine: '我这会儿有点忙 晚点跟你说',
@@ -23,9 +23,10 @@ export const DEFAULTS = {
 
 export function classifyIdentity(msg, cfg) {
   const id = cfg.identity || DEFAULTS.identity;
-  if (new RegExp(id.t0, 'i').test(msg)) return 'T0';
-  if (new RegExp(id.t1, 'i').test(msg)) return 'T1';
-  if (new RegExp(id.t2, 'i').test(msg)) return 'T2';
+  const hit = (pattern) => { try { return new RegExp(pattern, 'i').test(msg); } catch { return false; } };
+  if (hit(id.t0)) return 'T0';
+  if (hit(id.t1)) return 'T1';
+  if (hit(id.t2)) return 'T2';
   if (cfg.roleDefer) {
     try { if (new RegExp(cfg.roleDefer, 'i').test(msg)) return 'T2'; } catch { /* 坏正则忽略 */ }
   }
@@ -33,8 +34,13 @@ export function classifyIdentity(msg, cfg) {
 }
 
 export function isAckOnly(msg, cfg) {
-  const re = new RegExp(cfg.ackOnly || DEFAULTS.ackOnly, 'u');
-  return re.test(msg.trim());
+  try {
+    const re = new RegExp(cfg.ackOnly || DEFAULTS.ackOnly, 'u');
+    return re.test(msg.trim());
+  } catch {
+    // 坏正则不连累主循环：退回内置默认，再不行就当不是收尾语
+    try { return new RegExp(DEFAULTS.ackOnly, 'u').test(msg.trim()); } catch { return false; }
+  }
 }
 
 export function cannedReply(msg, cfg) {

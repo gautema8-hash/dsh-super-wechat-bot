@@ -14,9 +14,10 @@ export const LIMITS = {
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const clamp = (v, [lo, hi]) => Math.max(lo, Math.min(hi, v));
 
-function checkRegex(pattern, field, errors) {
+// flags 必须和运行时编译用的完全一致，否则会出现「保存被判非法、运行时却能跑」或者反过来。
+function checkRegex(pattern, field, errors, flags = 'i') {
   if (typeof pattern !== 'string' || !pattern) { errors.push(field + ': 必须是非空字符串'); return; }
-  try { new RegExp(pattern, 'i'); } catch (e) { errors.push(field + ': 正则不合法 (' + e.message + ')'); }
+  try { new RegExp(pattern, flags); } catch (e) { errors.push(field + ': 正则不合法 (' + e.message + ')'); }
 }
 
 /**
@@ -111,7 +112,7 @@ export function validatePatch(input) {
     if (typeof input.urgentRe === 'string') out.urgentRe = input.urgentRe;
   }
   if ('ackOnly' in input) {
-    checkRegex(input.ackOnly, 'ackOnly', errors);
+    checkRegex(input.ackOnly, 'ackOnly', errors, 'u');
     if (typeof input.ackOnly === 'string') out.ackOnly = input.ackOnly;
   }
   if ('canned' in input) {
