@@ -1,4 +1,4 @@
-// super-wechat-bot / policy.mjs
+// dsh-super-wechat-bot / policy.mjs
 // Deterministic gates: canned replies, identity escalation, ack filtering.
 
 export const DEFAULTS = {

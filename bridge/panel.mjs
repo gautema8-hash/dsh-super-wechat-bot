@@ -1,11 +1,11 @@
-// super-wechat-bot / panel.mjs
+// dsh-super-wechat-bot / panel.mjs
 // 本地面板：把配置、角色、草稿、状态做成一个网页。
 // 只监听 127.0.0.1，不对外暴露；所有写入都会先过 validate.mjs。
 
 import http from 'node:http';
 
 const PAGE = `<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><title>super-wechat-bot 面板</title>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>dsh-super-wechat-bot 面板</title>
 <style>
 :root{--bg:#0f1115;--card:#171a21;--line:#262b36;--txt:#e6e9ef;--dim:#8b93a5;--ok:#3ecf8e;--warn:#f0b429;--err:#f05252;--accent:#4c8dff}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
@@ -30,7 +30,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .err{color:var(--err);font-size:12px;margin-top:8px}
 .ok{color:var(--ok);font-size:12px;margin-top:8px}
 </style></head><body><div class="wrap">
-<h1>super-wechat-bot<span>微信代聊面板</span></h1>
+<h1>dsh-super-wechat-bot<span>微信代聊面板</span></h1>
 <div id="guide" style="display:none;margin-top:12px"></div>
 <div class="row" style="margin-top:10px"><span id="mode" class="pill off">—</span><span class="pill" id="title">会话 —</span><span class="pill" id="rolePill">角色 —</span><span class="pill" id="stats">—</span></div>
 

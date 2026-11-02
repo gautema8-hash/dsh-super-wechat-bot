@@ -1,5 +1,5 @@
 {
-  "name": "super-wechat-bot",
+  "name": "dsh-super-wechat-bot",
   "version": "0.1.0",
   "private": true,
   "description": "DSH plugin: 微信代聊机器人 — 独立桥进程，OCR 侧读，拟人节奏自动回复",

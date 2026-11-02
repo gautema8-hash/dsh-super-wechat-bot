@@ -1,4 +1,4 @@
-// super-wechat-bot / llm.mjs
+// dsh-super-wechat-bot / llm.mjs
 // Minimal DeepSeek chat call used by the bridge (no framework, ~1 request per reply).
 
 export async function chat({ apiKey, baseUrl, model, messages, temperature = 0.85, maxTokens = 120, timeoutMs = 9000 }) {

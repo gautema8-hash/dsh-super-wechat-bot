@@ -1,4 +1,4 @@
-// super-wechat-bot / parse.mjs
+// dsh-super-wechat-bot / parse.mjs
 // OCR lines -> chat messages (direction + merged bubbles).
 
 const TIME_RE = /^(\d{1,2}[:：]\d{2}|\d{1,2}月\d{1,2}日|星期[一二三四五六日天]|(上午|下午|凌晨|晚上)?\s*\d{1,2}[:：]\d{2})$/;

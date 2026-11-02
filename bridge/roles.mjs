@@ -1,4 +1,4 @@
-// super-wechat-bot / roles.mjs
+// dsh-super-wechat-bot / roles.mjs
 // 角色预设：决定「你以什么身份、用什么语气、跟谁说话」。
 // 每个角色都带着自己的禁区——这是"不会出错"的第一层。
 

@@ -1,4 +1,4 @@
-// super-wechat-bot / validate.mjs
+// dsh-super-wechat-bot / validate.mjs
 // 配置校验：面板/工具写进来的每一个值都先过这里。
 // 目的只有一个——配置写错也不能让它发错消息。
 

@@ -1,4 +1,4 @@
-# super-wechat-bot
+# dsh-super-wechat-bot
 
 微信代聊机器人 · DSH 插件。用主人本人的口吻替你回微信，**检测→决策→发送整条回路跑在独立进程里**，不占 DSH 的 agent 轮次。
 
@@ -10,19 +10,19 @@
 
 ## 安装
 
-已经装进 `C:\Users\xuyan\.dsh\profiles\web\node_modules\super-wechat-bot`，
+已经装进 `C:\Users\xuyan\.dsh\profiles\web\node_modules\dsh-super-wechat-bot`，
 并在 profile 的 `cordis.patch.yml` 里加了 loader 条目：
 
 ```yaml
 - insert:
-    - id: super-wechat-bot
-      name: 'super-wechat-bot'
+    - id: dsh-super-wechat-bot
+      name: 'dsh-super-wechat-bot'
 ```
 
 改完代码要同步过去（开发目录 → profile）：
 
 ```powershell
-Copy-Item -Recurse -Force .\super-wechat-bot\* "$env:USERPROFILE\.dsh\profiles\web\node_modules\super-wechat-bot\"
+Copy-Item -Recurse -Force .\dsh-super-wechat-bot\* "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-super-wechat-bot\"
 ```
 
 ## 用法
@@ -45,7 +45,7 @@ Copy-Item -Recurse -Force .\super-wechat-bot\* "$env:USERPROFILE\.dsh\profiles\w
 
 ## 配置
 
-文件：`~/.dsh/super-wechat-bot/config.json`（没有会自动建）。
+文件：`~/.dsh/dsh-super-wechat-bot/config.json`（没有会自动建）。
 
 | 键 | 默认 | 说明 |
 |---|---|---|

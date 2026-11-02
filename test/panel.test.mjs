@@ -21,7 +21,7 @@ let pass = 0, fail = 0;
 const ok = (n, c, d2) => { console.log((c ? '  PASS  ' : '  FAIL  ') + n + (d2 ? ' — ' + d2 : '')); c ? pass++ : fail++; };
 
 const html = await (await fetch('http://127.0.0.1:' + PORT + '/')).text();
-ok('面板页面能打开', html.includes('super-wechat-bot') && html.includes('角色预设'));
+ok('面板页面能打开', html.includes('dsh-super-wechat-bot') && html.includes('角色预设'));
 
 const st = await api('/api/state');
 ok('状态接口返回角色列表', Array.isArray(st.roles) && st.roles.length >= 5, 'roles=' + (st.roles || []).length);

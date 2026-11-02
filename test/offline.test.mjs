@@ -1,4 +1,4 @@
-// super-wechat-bot / test/offline.test.mjs — 不依赖微信、不联网的纯逻辑自测
+// dsh-super-wechat-bot / test/offline.test.mjs — 不依赖微信、不联网的纯逻辑自测
 import assert from 'node:assert';
 import { parseMessages, sliceNewIncoming, lastIncomingKey } from '../bridge/parse.mjs';
 import { classifyIdentity, isAckOnly, cannedReply, sanitizeReply, DEFAULTS } from '../bridge/policy.mjs';

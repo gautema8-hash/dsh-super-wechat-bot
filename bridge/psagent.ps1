@@ -1,4 +1,4 @@
-# super-wechat-bot / psagent.ps1
+# dsh-super-wechat-bot / psagent.ps1
 # Persistent PowerShell helper: PrintWindow capture, Windows OCR (WinRT), mouse/keyboard input.
 # Protocol: one JSON request per stdin line, one JSON response per stdout line.
 # ASCII-only source on purpose (PS 5.1 loads BOM-less files as ANSI).

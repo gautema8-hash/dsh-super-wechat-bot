@@ -1,4 +1,4 @@
-// super-wechat-bot / daemon.mjs
+// dsh-super-wechat-bot / daemon.mjs
 // Standalone bridge process. Owns one persistent PowerShell agent and runs the
 // whole detect -> decide -> send loop outside the DSH agent turn.
 // Control protocol: one JSON line per stdin line, answers tagged {type:"reply",id}.
@@ -34,7 +34,7 @@ import { startPanel } from './panel.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOME = os.homedir();
-const SWB_HOME = process.env.SWB_HOME || path.join(HOME, '.dsh', 'super-wechat-bot');
+const SWB_HOME = process.env.SWB_HOME || path.join(HOME, '.dsh', 'dsh-super-wechat-bot');
 const CONFIG_FILE = path.join(SWB_HOME, 'config.json');
 const AUDIT_DIR = path.join(SWB_HOME, 'audit');
 
@@ -943,7 +943,7 @@ async function acquireLock() {
     if (prev && prev !== PID) {
       let alive = false;
       try { process.kill(prev, 0); alive = true; } catch { alive = false; }
-      if (alive) throw new Error('another super-wechat-bot daemon is already running (pid ' + prev + ')');
+      if (alive) throw new Error('another dsh-super-wechat-bot daemon is already running (pid ' + prev + ')');
     }
   } catch (err) {
     if (/already running/.test(String(err?.message))) throw err;

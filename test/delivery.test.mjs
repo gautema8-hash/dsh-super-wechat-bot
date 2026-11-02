@@ -1,4 +1,4 @@
-// super-wechat-bot / test/delivery.test.mjs
+// dsh-super-wechat-bot / test/delivery.test.mjs
 // 交付级端到端测试：真实拉起 daemon + PowerShell agent，走真实决策与真实发送。
 // 用法：node test/delivery.test.mjs [--dry]
 //   --dry：只跑决策不发消息（把 mode 钉在 draft）
