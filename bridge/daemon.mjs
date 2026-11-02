@@ -209,6 +209,7 @@ const state = {
   lastHandledKey: '',
   frameHash: '',
   role: 'friend',
+  retryQueue: [],
 };
 
 let cfg = { ...DEFAULT_CONFIG };
@@ -454,6 +455,8 @@ async function maybeSend(text, { urgent = false, draftId = null } = {}) {
     state.stats.errors += 1;
     state.lastError = String(err?.message || err);
     OUT({ type: 'event', event: 'error', msg: state.lastError });
+    // 发不出去就排队，等焦点空出来再补发（不丢消息）
+    enqueueRetry(text, state.lastError);
     return false;
   }
 }
@@ -488,6 +491,47 @@ async function confirmSent(text) {
     } catch { /* 单次确认失败不影响判定 */ }
   }
   return false;
+}
+
+
+// ---------------------------------------------------------------- retry queue
+// 发不出去的消息不丢：进队列，等能发的时候（焦点空出来）按指数退避补发。
+function enqueueRetry(text, reason) {
+  if (!text) return;
+  const now = Date.now();
+  state.retryQueue = state.retryQueue.filter((r) => now - r.createdAt < 10 * 60 * 1000);
+  if (state.retryQueue.some((r) => r.text === text)) return;
+  if (state.retryQueue.length >= 10) state.retryQueue.shift();
+  state.retryQueue.push({ text, reason: String(reason || '').slice(0, 80), attempts: 0, createdAt: now, nextAt: now + 4000 });
+  OUT({ type: 'event', event: 'retry-queued', text, reason });
+  audit({ kind: 'retry-queued', text, reason }).catch(() => {});
+}
+
+async function processRetries() {
+  if (!state.running || state.mode === 'off' || !agent?.alive) return;
+  if (!state.retryQueue.length) return;
+  const now = Date.now();
+  for (const item of [...state.retryQueue]) {
+    if (now < item.nextAt) continue;
+    if (now - item.createdAt > 10 * 60 * 1000) {
+      state.retryQueue = state.retryQueue.filter((r) => r !== item);
+      OUT({ type: 'event', event: 'retry-dropped', text: item.text, reason: 'expired' });
+      continue;
+    }
+    if (!titleMatches(state.lastTitle, state.contact)) { item.nextAt = now + 3000; continue; }
+    item.attempts += 1;
+    try {
+      await sendText(item.text, { clear: false });
+      state.retryQueue = state.retryQueue.filter((r) => r !== item);
+      OUT({ type: 'event', event: 'retry-sent', text: item.text, attempts: item.attempts });
+    } catch (err) {
+      item.nextAt = Date.now() + Math.min(30000, 2000 * Math.pow(2, item.attempts));
+      if (item.attempts >= 5) {
+        state.retryQueue = state.retryQueue.filter((r) => r !== item);
+        OUT({ type: 'event', event: 'retry-failed', text: item.text, error: String(err?.message || err) });
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------- loop
@@ -553,6 +597,7 @@ async function loop() {
       if (state.mode === 'off') { await sleep(500); continue; }
       try {
         await tick();
+        await processRetries();
       } catch (err) {
         state.stats.errors += 1;
         state.lastError = String(err?.message || err);
@@ -582,6 +627,7 @@ const handlers = {
       lastError: state.lastError,
       pausedReason: state.pausedReason,
       escalations: state.escalations,
+      retries: state.retryQueue.map((r) => ({ text: r.text, attempts: r.attempts, nextAt: r.nextAt })),
       config: publicConfig(),
     };
   },
