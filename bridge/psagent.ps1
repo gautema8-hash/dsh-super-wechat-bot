@@ -350,6 +350,15 @@ while ($true) {
             $needTitle = $changed -or (($nowMs - $script:LastTitleMs) -gt 2000)
             if ($needTitle) {
               $title = Read-Title $cap
+              if (-not $title -and $cap.hwnd) {
+                # 完全被遮挡时 PrintWindow 可能给空帧：借一次前台再试
+                $fg0 = [SwbWin32]::GetForegroundWindow()
+                [void][SwbWin32]::ForceForeground($cap.hwnd)
+                Start-Sleep -Milliseconds 160
+                $cap2 = Capture-Window $t
+                try { $title = Read-Title $cap2 } finally { $cap2.bmp.Dispose() }
+                if ($fg0 -ne [IntPtr]::Zero) { [void][SwbWin32]::SetForegroundWindow($fg0) }
+              }
               $script:LastTitle = $title
               $script:LastTitleMs = $nowMs
             } else {
