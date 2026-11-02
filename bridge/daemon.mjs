@@ -706,6 +706,49 @@ const handlers = {
     }
     return { ok: true, errors, warnings, config: publicConfig(), role: cfg.role };
   },
+  /** 首次使用自检：环境 / 登录 / 会话，返回下一步该干什么 */
+  async preflight() {
+    let probe = { running: false, loggedIn: false, title: '' };
+    try {
+      if (!agent?.alive) {
+        agent = new Agent(cfg.processName || 'Weixin');
+        await agent.start();
+        await agent.request('config', { cfg: geometry(cfg) });
+      }
+      probe = await agent.request('probe', {}, 30000);
+    } catch (err) {
+      probe = { running: false, loggedIn: false, title: '', error: String(err?.message || err) };
+    }
+    const steps = [];
+    if (!probe.running) {
+      steps.push({ key: 'install', done: false, title: '没检测到微信', action: '点「打开微信」，装好并登录后再回来' });
+    } else if (!probe.loggedIn) {
+      steps.push({ key: 'login', done: false, title: '微信没登录', action: '在微信窗口扫码登录，然后点「重新检测」' });
+    }
+    const contact = state.contact || cfg.contact || '';
+    if (probe.running && probe.loggedIn) {
+      if (!contact) steps.push({ key: 'contact', done: false, title: '还没填目标会话', action: '填联系人昵称（和微信标题一致），保存后再启动' });
+      else if (probe.title && !titleMatches(probe.title, contact)) {
+        steps.push({ key: 'switch', done: false, title: '当前会话是「' + probe.title + '」', action: '在微信里切到「' + contact + '」后点「重新检测」' });
+      }
+    }
+    return {
+      ok: true,
+      wechat: { running: !!probe.running, loggedIn: !!probe.loggedIn, title: probe.title || '', hwnd: probe.hwnd || 0 },
+      contact,
+      ready: steps.length === 0,
+      steps,
+    };
+  },
+  async launch() {
+    try {
+      if (!agent?.alive) { agent = new Agent(cfg.processName || 'Weixin'); await agent.start(); }
+      const r = await agent.request('launch', {}, 20000);
+      return { ok: !!r.launched, ...r };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err) };
+    }
+  },
   async log(args = {}) {
     return { drafts: state.drafts.slice(0, args.n || 20), stats: state.stats, lastError: state.lastError };
   },
@@ -769,6 +812,8 @@ async function boot() {
   const panel = startPanel({
     port: Number(cfg.panelPort) || 47821,
     getState: panelState,
+    preflight: () => handlers.preflight(),
+    launch: () => handlers.launch(),
     setConfig: (patch) => handlers.config({ set: patch }),
     start: (args) => handlers.start(args),
     stop: () => handlers.stop(),

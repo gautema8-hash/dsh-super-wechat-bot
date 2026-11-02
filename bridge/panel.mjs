@@ -31,6 +31,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .ok{color:var(--ok);font-size:12px;margin-top:8px}
 </style></head><body><div class="wrap">
 <h1>super-wechat-bot<span>微信代聊面板</span></h1>
+<div id="guide" style="display:none;margin-top:12px"></div>
 <div class="row" style="margin-top:10px"><span id="mode" class="pill off">—</span><span class="pill" id="title">会话 —</span><span class="pill" id="rolePill">角色 —</span><span class="pill" id="stats">—</span></div>
 
 <div class="card"><div class="grid">
@@ -54,6 +55,19 @@ button:disabled{opacity:.45;cursor:not-allowed}
 </div>
 <script>
 const $ = (s) => document.querySelector(s);
+async function loadGuide() {
+  const g = await api('/api/preflight');
+  const box = $('#guide');
+  if (g.ready) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = '<div class="card" style="border-color:#5c4a1f"><strong>还差 ' + g.steps.length + ' 步才能用</strong>' +
+    g.steps.map((s, i) => '<div class="draft"><div class="ctx">第 ' + (i + 1) + ' 步 · ' + s.title + '</div><div class="tx">' + s.action + '</div></div>').join('') +
+    '<div class="row" style="margin-top:10px">' + (g.wechat.running ? '' : '<button id="gLaunch">打开微信</button> ') +
+    '<button class="ghost" id="gRetry">重新检测</button>' +
+    (g.wechat.running ? '<span class="pill">当前会话：' + (g.wechat.title || '(未识别)') + '</span>' : '') + '</div></div>';
+  const lb = $('#gLaunch'); if (lb) lb.onclick = async () => { const r = await api('/api/launch', {}); say(r.ok ? '已尝试打开微信' : ('打开失败：' + (r.error || '')), !r.ok); setTimeout(loadGuide, 1500); };
+  const rb = $('#gRetry'); if (rb) rb.onclick = () => { loadGuide(); load(); };
+}
 let state = null;
 const api = async (path, body) => {
   const r = await fetch(path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
@@ -101,7 +115,7 @@ $('#save').onclick = async () => {
 $('#startDraft').onclick = async () => { const r = await api('/api/start', { mode: 'draft' }); say(r.ok ? '已启动(draft)' : r.error, !r.ok); load(); };
 $('#startAuto').onclick = async () => { const r = await api('/api/start', { mode: 'auto' }); say(r.ok ? '已启动(auto)' : r.error, !r.ok); load(); };
 $('#stop').onclick = async () => { const r = await api('/api/stop', {}); say(r.ok ? '已停止' : r.error, !r.ok); load(); };
-load(); setInterval(load, 2000);
+load(); loadGuide(); setInterval(load, 2000); setInterval(loadGuide, 6000);
 </script></body></html>`;
 
 function send(res, code, obj) {
@@ -134,6 +148,8 @@ export function startPanel(opts) {
       if (req.method === 'OPTIONS') return send(res, 204, { ok: true });
       if (url.pathname === '/' || url.pathname === '/index.html') return send(res, 200, PAGE);
       if (url.pathname === '/api/state' && req.method === 'GET') return send(res, 200, opts.getState());
+      if (url.pathname === '/api/preflight') return send(res, 200, await opts.preflight());
+      if (url.pathname === '/api/launch') return send(res, 200, await opts.launch());
       if (req.method !== 'POST') return send(res, 405, { ok: false, error: 'method not allowed' });
       const body = await readBody(req);
       if (url.pathname === '/api/config') return send(res, 200, await opts.setConfig(body));

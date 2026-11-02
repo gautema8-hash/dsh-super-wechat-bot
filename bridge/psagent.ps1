@@ -395,6 +395,34 @@ while ($true) {
           Reply $id $true ([ordered]@{ path = $path; bounds = [ordered]@{ x = $cap.x; y = $cap.y; w = $cap.w; h = $cap.h } })
         } finally { $cap.bmp.Dispose() }
       }
+      "launch" {
+        $exe = @(
+          "$env:ProgramFiles\Tencent\Weixin\Weixin.exe",
+          "${env:ProgramFiles(x86)}\Tencent\Weixin\Weixin.exe",
+          "$env:ProgramFiles\Tencent\WeChat\WeChat.exe",
+          "${env:ProgramFiles(x86)}\Tencent\WeChat\WeChat.exe"
+        ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+        if (-not $exe) { Reply $id $true ([ordered]@{ launched = $false; error = "not-installed" }); continue }
+        Start-Process -FilePath $exe | Out-Null
+        Start-Sleep -Milliseconds 1200
+        Reply $id $true ([ordered]@{ launched = $true; exe = $exe })
+      }
+      "probe" {
+        $hwnd = [SwbWin32]::FindMainWindow("Qt51514QWindowIcon")
+        if ($hwnd -eq [IntPtr]::Zero) {
+          Reply $id $true ([ordered]@{ running = $false; loggedIn = $false; title = "" })
+          continue
+        }
+        $procId = 0; [void][SwbWin32]::GetWindowThreadProcessId($hwnd, [ref]$procId)
+        $t2 = @{ hwnd = $hwnd; pid = $procId }
+        $cap = Capture-Window $t2
+        try {
+          $title = Read-Title $cap
+          $txt = ""
+          foreach ($l in (Ocr-Bitmap (Scale-Bitmap $cap.bmp 0.5) 0.5)) { $txt += $l.t }
+        } finally { $cap.bmp.Dispose() }
+        Reply $id $true ([ordered]@{ running = $true; hwnd = [int]$hwnd; visible = [SwbWin32]::IsWindowVisible($hwnd); loggedIn = ($title.Length -gt 0 -or $txt.Length -gt 10); title = $title })
+      }
       "input" {
         $t = Find-Target
         Reply $id $true ([ordered]@{ text = (Read-InputArea $t) })
