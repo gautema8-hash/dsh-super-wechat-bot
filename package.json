@@ -1,6 +1,6 @@
 {
   "name": "dsh-super-wechat-bot",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "微信代聊机器人 · DSH 插件：OCR 读屏 + 拟人节奏，用你本人的口吻替你回微信",
   "type": "module",
   "main": "lib/index.js",
