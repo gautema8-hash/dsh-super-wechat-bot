@@ -50,6 +50,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <span id="msg"></span>
 </div></div>
 
+<div class="card"><div class="row"><strong>自定义角色</strong><span class="pill">JSON 数组</span></div>
+<div class="log" style="margin:8px 0">示例：[{"key":"client_a","label":"甲方A","persona":"你在替一位项目经理回复甲方，语气专业克制，只回 1-2 句。","defer":"(报价|工期|合同)","deferLine":"这个我确认下再回您","maxChars":45}]</div>
+<textarea id="customRolesBox" rows="5" placeholder='[{"key":"client_a","label":"甲方A","persona":"..."}]'></textarea>
+<div class="row" style="margin-top:8px"><button id="saveRoles">保存自定义角色</button><span id="roleMsg"></span></div></div>
 <div class="card"><div class="row"><strong>待处理草稿</strong><span class="pill" id="draftCount">0</span></div><div id="drafts"></div></div>
 <div class="card"><strong>最近事件</strong><div class="log" id="log"></div></div>
 </div>
@@ -93,6 +97,7 @@ async function load() {
     for (const r of st.roles) { const o = document.createElement('option'); o.value = r.key; o.textContent = r.label; sel.appendChild(o); }
   }
   sel.value = st.role;
+  if (document.activeElement.id !== 'customRolesBox' && st.config && Array.isArray(st.config.customRoles)) { $('#customRolesBox').value = JSON.stringify(st.config.customRoles, null, 0); }
   const ds = (st.drafts || []).filter((d) => d.status === 'pending');
   $('#draftCount').textContent = ds.length;
   $('#drafts').innerHTML = ds.map((d) => \`<div class="draft"><div class="ctx">\${d.kind || ''} \${d.level || ''} \${d.source || ''}</div><div class="ctx">对方：\${(d.context || []).join(' / ')}</div><div class="tx">\${d.text || '（不回）'}</div><button data-a="approve" data-id="\${d.id}">发送这条</button> <button class="ghost" data-a="reject" data-id="\${d.id}">丢弃</button></div>\`).join('') || '<div class="log">暂无</div>';
@@ -115,6 +120,14 @@ $('#save').onclick = async () => {
 $('#startDraft').onclick = async () => { const r = await api('/api/start', { mode: 'draft' }); say(r.ok ? '已启动(draft)' : r.error, !r.ok); load(); };
 $('#startAuto').onclick = async () => { const r = await api('/api/start', { mode: 'auto' }); say(r.ok ? '已启动(auto)' : r.error, !r.ok); load(); };
 $('#stop').onclick = async () => { const r = await api('/api/stop', {}); say(r.ok ? '已停止' : r.error, !r.ok); load(); };
+$('#saveRoles').onclick = async () => {
+  let arr;
+  try { arr = JSON.parse($('#customRolesBox').value || '[]'); } catch (e) { $('#roleMsg').className='err'; $('#roleMsg').textContent='JSON 解析失败：'+e.message; return; }
+  const r = await api('/api/config', { customRoles: arr });
+  $('#roleMsg').className = r.ok ? 'ok' : 'err';
+  $('#roleMsg').textContent = r.ok ? ('已保存 ' + arr.length + ' 个自定义角色') : (r.errors || []).join('；');
+  load();
+};
 load(); loadGuide(); setInterval(load, 2000); setInterval(loadGuide, 6000);
 </script></body></html>`;
 

@@ -41,6 +41,26 @@ export function validatePatch(input) {
     else if (c.length > 40) errors.push('contact 太长（>40 字）');
     else out.contact = c;
   }
+  if ('customRoles' in input) {
+    if (!Array.isArray(input.customRoles)) errors.push('customRoles 必须是数组');
+    else {
+      const list = [];
+      input.customRoles.slice(0, 20).forEach((r, i) => {
+        if (!r || typeof r !== 'object') { errors.push('customRoles[' + i + '] 不是对象'); return; }
+        if (!r.key || !/^[a-zA-Z0-9_-]{2,32}$/.test(String(r.key))) { errors.push('customRoles[' + i + '].key 只能字母数字下划线横线（2-32）'); return; }
+        if (!r.label || typeof r.label !== 'string') { errors.push('customRoles[' + i + '].label 必填'); return; }
+        if (!r.persona || typeof r.persona !== 'string') { errors.push('customRoles[' + i + '].persona 必填'); return; }
+        if (r.defer != null) { try { new RegExp(String(r.defer)); } catch (e) { errors.push('customRoles[' + i + '].defer 正则不合法'); return; } }
+        const canned = Array.isArray(r.canned) ? r.canned.slice(0, 20).map((c, j) => {
+          if (!c || typeof c.re !== 'string') { errors.push('customRoles[' + i + '].canned[' + j + '] 缺 re'); return null; }
+          try { new RegExp(c.re); } catch (e) { errors.push('customRoles[' + i + '].canned[' + j + '].re 正则不合法'); return null; }
+          return { re: String(c.re), reply: c.reply === null ? null : String(c.reply || '').slice(0, 60) };
+        }).filter(Boolean) : [];
+        list.push({ key: String(r.key), label: String(r.label).slice(0, 40), persona: String(r.persona).slice(0, 2000), defer: r.defer ? String(r.defer) : '', deferLine: String(r.deferLine || '这个我确认下再回你').slice(0, 60), maxChars: Number(r.maxChars) > 0 ? Math.min(120, Math.max(8, Math.round(Number(r.maxChars)))) : 45, canned });
+      });
+      out.customRoles = list;
+    }
+  }
   if ('role' in input) {
     const r = String(input.role || '').trim();
     if (!r) errors.push('role 不能为空');

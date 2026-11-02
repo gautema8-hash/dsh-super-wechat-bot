@@ -12,7 +12,23 @@ import { fileURLToPath } from 'node:url';
 import { parseMessages, sliceNewIncoming, lastIncomingKey } from './parse.mjs';
 import { classifyIdentity, isAckOnly, cannedReply, sanitizeReply, DEFAULTS } from './policy.mjs';
 import { chat, buildMessages } from './llm.mjs';
-import { ROLES, getRole, rolePersona, ROLE_KEYS } from './roles.mjs';
+import { ROLES, getRole as builtinRole, rolePersona as builtinPersona, ROLE_KEYS as BUILTIN_KEYS } from './roles.mjs';
+
+// 自定义角色优先于内置；都找不到就回退到「朋友」
+function findRole(key) {
+  const custom = (cfg.customRoles || []).find((r) => r && r.key === key);
+  if (custom) return custom;
+  return builtinRole(key);
+}
+function renderPersona(role, maxChars) {
+  if (role && typeof role.persona === 'string') return role.persona.replace(/\{maxChars\}/g, String(maxChars || role.maxChars || 40));
+  return builtinPersona('friend', maxChars);
+}
+function allRoleKeys() {
+  const keys = BUILTIN_KEYS.slice();
+  for (const r of cfg.customRoles || []) if (r && r.key && !keys.includes(r.key)) keys.push(r.key);
+  return keys;
+}
 import { validatePatch } from './validate.mjs';
 import { startPanel } from './panel.mjs';
 
@@ -81,11 +97,11 @@ function deepMerge(base, patch) {
 // ---------------------------------------------------------------- role
 /** 把角色预设灌进运行时配置（persona/话术/字数/额外禁区） */
 function applyRole() {
-  const role = getRole(cfg.role);
-  cfg.persona = rolePersona(cfg.role, cfg.maxReplyChars || role.maxChars);
-  cfg.canned = role.canned;
-  cfg.deferLine = role.deferLine;
-  cfg.roleDefer = role.defer;
+  const role = findRole(cfg.role);
+  cfg.persona = renderPersona(role, cfg.maxReplyChars || role.maxChars);
+  cfg.canned = Array.isArray(role.canned) ? role.canned : [];
+  cfg.deferLine = role.deferLine || '这个我确认下再回你';
+  cfg.roleDefer = role.defer || '';
   if (!cfg.maxReplyChars) cfg.maxReplyChars = role.maxChars;
   state.role = cfg.role;
 }
@@ -736,11 +752,13 @@ const handlers = {
     let warnings = [];
     if (args.set && typeof args.set === 'object') {
       const v = validatePatch(args.set);
-      if (v.patch.role && !ROLE_KEYS.includes(v.patch.role)) v.errors.push('未知角色: ' + v.patch.role);
+      if (v.patch.role && !BUILTIN_KEYS.includes(v.patch.role) && !(v.patch.customRoles || cfg.customRoles || []).some((r) => r && r.key === v.patch.role)) {
+        v.errors.push('未知角色: ' + v.patch.role + '（内置：' + BUILTIN_KEYS.join('/') + '；自定义请先加 customRoles）');
+      }
       errors = v.errors; warnings = v.warnings;
       if (v.errors.length) return { ok: false, errors, warnings, config: publicConfig() };
       cfg = deepMerge(cfg, v.patch);
-      if (typeof v.patch.role === 'string') applyRole();
+      if (typeof v.patch.role === 'string' || Array.isArray(v.patch.customRoles)) applyRole();
       if (typeof v.patch.contact === 'string' && v.patch.contact) {
         state.contact = v.patch.contact;
         state.initialized = false;
@@ -837,8 +855,8 @@ function panelState() {
     contact: state.contact,
     title: state.lastTitle,
     role: cfg.role,
-    roleLabel: getRole(cfg.role).label,
-    roles: ROLE_KEYS.map((k) => ({ key: k, label: ROLES[k].label })),
+    roleLabel: (findRole(cfg.role) || {}).label || cfg.role,
+    roles: allRoleKeys().map((k) => ({ key: k, label: (findRole(k) || {}).label || k })),
     drafts: state.drafts.slice(0, 20),
     stats: state.stats,
     lastError: state.lastError,
